@@ -11,6 +11,12 @@ fn shifted_sigmoid(x: i32) -> f64 {
     0.6 / (1.0 + exp(((-1*x) + 5) as f64))
 }
 
+enum Page {
+    Homescreen,
+    Gameoverscreen,
+    Gamescreen,
+    Quit
+}
 
 #[derive(Clone, Debug)]
 struct Cell{
@@ -55,7 +61,7 @@ struct MineSweeper {
     field_origin: (u16, u16),
     moves: u16,
     level: u16,
-    page: String
+    page: Page
 }
 
 impl fmt::Display for MineSweeper {
@@ -87,7 +93,7 @@ impl MineSweeper {
             field.push(field_row);
         }
         let mut ms = MineSweeper {width: x as u8, height: y as u8, field, field_origin,
-             moves: 0, level:1, page: String::from("Homescreen")};
+             moves: 0, level:1, page: Page::Homescreen};
         ms.update_neighbours();
         ms
     }
@@ -198,7 +204,7 @@ impl MineSweeper {
                             }
                             // if we hit a bomb
                             else if self.field[y_hat as usize][x_hat as usize].bomb {
-                                self.page = String::from("Gameover");
+                                self.page = Page::Gameoverscreen;
                                 return;
                             }
                             // if we try to open a cell that is already visible
@@ -219,7 +225,7 @@ impl MineSweeper {
 
     fn gamescreen(&mut self, evt: Event) {
         match evt {
-            Event::Key(Key::Char('q')) => {self.page = String::from("Homescreen"); self.reset()},
+            Event::Key(Key::Char('q')) => {self.page = Page::Homescreen; self.reset()},
             Event::Key(Key::Char('r')) => self.reset(),
             Event::Mouse(me) => self.make_move(me),
             _ => {}
@@ -238,8 +244,8 @@ impl MineSweeper {
 
     fn homescreen(&mut self, evt: Event) {
         match evt {
-            Event::Key(Key::Char('q')) => self.page = String::from("Quit"),
-            Event::Key(Key::Char('p')) => self.page = String::from("Gamescreen"),
+            Event::Key(Key::Char('q')) => self.page = Page::Quit,
+            Event::Key(Key::Char('p')) => self.page = Page::Gamescreen,
             // regardless of having pressed shift we want to upgrade the level
             Event::Key(Key::Char('=')) => {if self.level < 9 {self.level += 1}},
             Event::Key(Key::Char('+')) => {if self.level < 9 {self.level += 1}},
@@ -265,7 +271,7 @@ impl MineSweeper {
 
     fn gameoverscreen(&mut self, evt: Event) {
         match evt {
-            Event::Key(Key::Char('r')) => self.page = String::from("Homescreen"),
+            Event::Key(Key::Char('r')) => self.page = Page::Homescreen,
             _ => {}
         }
     }
@@ -290,20 +296,19 @@ impl MineSweeper {
             let evt = c.unwrap();
             
             // process the event
-            match self.page.as_str() {
-                "Homescreen" => self.homescreen(evt),
-                "Gamescreen" => self.gamescreen(evt),
-                "Gameover" => self.gameoverscreen(evt),
-                _ => {}
+            match self.page {
+                Page::Homescreen => self.homescreen(evt),
+                Page::Gamescreen => self.gamescreen(evt),
+                Page::Gameoverscreen => self.gameoverscreen(evt),
+                Page::Quit => break
             }
 
             // update the screen, note that self.page might have been changed due to to previous match
-            match self.page.as_str() {
-                "Homescreen" => self.write_homescreen(&mut stdout),
-                "Gamescreen" => self.write_gamescreen(&mut stdout),
-                "Gameover" => self.write_gameoverscreen(&mut stdout),
-                "Quit" => break,
-                _ => {}
+            match self.page {
+                Page::Homescreen => self.write_homescreen(&mut stdout),
+                Page::Gamescreen => self.write_gamescreen(&mut stdout),
+                Page::Gameoverscreen => self.write_gameoverscreen(&mut stdout),
+                Page::Quit => break
             }
             stdout.flush().unwrap();
         }
